@@ -6,167 +6,205 @@
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     
     <style>
-      /* --- 1. OVERLAYS & UI --- */
+      /* --- UI STYLES --- */
       body { margin: 0; overflow: hidden; font-family: sans-serif; }
 
-      /* Start Screen */
-      #overlay {
+      /* UI LAYER (Holds everything on top of video) */
+      #ui-layer {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; /* Default: Let clicks pass through to drag video */
+        z-index: 100;
+      }
+
+      /* START SCREEN (Black overlay) */
+      #start-screen {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.85); z-index: 9999;
+        background: rgba(0,0,0,0.9); z-index: 200;
         display: flex; justify-content: center; align-items: center;
+        pointer-events: auto;
+      }
+      #start-btn {
+        padding: 15px 40px; font-size: 18px; background: white;
+        border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+      }
+      #start-btn:disabled { opacity: 0.5; cursor: wait; }
+
+      /* CENTER PLAY/PAUSE BUTTON */
+      #center-controls {
+        position: absolute; top: 50%; left: 50%; 
+        transform: translate(-50%, -50%);
+        width: 80px; height: 80px;
+        pointer-events: auto; /* Clickable */
         cursor: pointer;
-      }
-      #play-btn {
-        padding: 15px 30px; font-size: 18px; background: white;
-        border: none; border-radius: 4px; font-weight: bold;
-        text-transform: uppercase; letter-spacing: 1px; cursor: pointer;
-      }
-
-      /* Top Left Header */
-      #ui-header {
-        position: fixed; top: 20px; left: 20px; z-index: 100;
-        color: white; pointer-events: none;
-        text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
-      }
-      h1 { margin: 0; font-size: 1.2rem; letter-spacing: 1px; }
-      p { margin: 5px 0 0 0; font-size: 0.8rem; opacity: 0.8; }
-
-      /* Play/Pause Center Icon */
-      #status-indicator {
-        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        z-index: 90; pointer-events: none; display: none;
-      }
-      .pause-icon {
-        width: 0; height: 0;
-        border-top: 20px solid transparent;
-        border-bottom: 20px solid transparent;
-        border-left: 35px solid rgba(255,255,255,0.8);
-      }
-
-      /* --- CUSTOM FULLSCREEN BUTTON --- */
-      #fullscreen-btn {
-        position: fixed; bottom: 20px; right: 20px; z-index: 100;
-        background: rgba(0, 0, 0, 0.5); color: white;
-        border: 2px solid white; border-radius: 5px;
-        width: 40px; height: 40px;
+        opacity: 1; /* Visible by default */
+        transition: opacity 0.3s;
         display: flex; justify-content: center; align-items: center;
-        cursor: pointer; transition: background 0.2s;
+        background: rgba(0, 0, 0, 0.6);
+        border: 3px solid white; border-radius: 50%;
       }
-      #fullscreen-btn:hover { background: rgba(255, 255, 255, 0.2); }
-      
-      /* SVG Icon styling */
-      #fullscreen-btn svg { width: 20px; height: 20px; fill: white; }
+
+      /* ICONS */
+      .icon-play {
+        width: 0; height: 0;
+        border-top: 15px solid transparent;
+        border-bottom: 15px solid transparent;
+        border-left: 25px solid white;
+        margin-left: 5px;
+      }
+      .icon-pause {
+        width: 25px; height: 30px;
+        border-left: 8px solid white;
+        border-right: 8px solid white;
+        display: none;
+      }
+
+      /* HEADER & FULLSCREEN */
+      #ui-header {
+        position: absolute; top: 20px; left: 20px; color: white;
+        text-shadow: 1px 1px 4px black;
+      }
+      #fullscreen-btn {
+        position: absolute; bottom: 20px; right: 20px;
+        pointer-events: auto; cursor: pointer;
+        background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;
+      }
+      #fullscreen-btn svg { width: 24px; height: 24px; fill: white; display: block; }
 
     </style>
   </head>
   <body>
 
-    <div id="overlay">
-      <button id="play-btn">START TOUR</button>
+    <div id="start-screen">
+      <button id="start-btn" disabled>LOADING...</button>
     </div>
 
-    <div id="ui-header">
-      <h1>REAL ESTATE</h1>
-      <p>Luxury Apartment • 4K 360°</p>
+    <div id="ui-layer">
+      <div id="ui-header">
+        <h1 style="margin:0; font-size:1.2rem;">REAL ESTATE</h1>
+        <p style="margin:5px 0 0; font-size:0.8rem; opacity:0.8;">Luxury Apartment • 4K</p>
+      </div>
+
+      <div id="center-controls">
+        <div class="icon-play"></div>
+        <div class="icon-pause"></div>
+      </div>
+
+      <div id="fullscreen-btn">
+        <svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+      </div>
     </div>
 
-    <div id="status-indicator">
-      <div class="pause-icon"></div>
-    </div>
-
-    <div id="fullscreen-btn" title="Toggle Fullscreen">
-      <svg viewBox="0 0 24 24">
-        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-      </svg>
-    </div>
-
-    <a-scene loading-screen="dotsColor: white; backgroundColor: black"
-             vr-mode-ui="enabled: false">
-      
+    <a-scene loading-screen="dotsColor: white; backgroundColor: black" vr-mode-ui="enabled: false">
       <a-assets>
-        <video id="video360" 
-               src="video.mp4"
-               loop="true" 
-               crossorigin="anonymous" 
-               playsinline 
-               webkit-playsinline>
-        </video>
+        <video id="video360" src="video.mp4" loop crossorigin="anonymous" playsinline webkit-playsinline></video>
       </a-assets>
-
       <a-videosphere src="#video360" rotation="0 -90 0"></a-videosphere>
-
       <a-entity camera look-controls="reverseMouseDrag: true"></a-entity>
     </a-scene>
 
     <script>
-      const overlay = document.querySelector('#overlay');
-      const video = document.querySelector('#video360');
+      const startScreen = document.getElementById('start-screen');
+      const startBtn = document.getElementById('start-btn');
+      const centerBtn = document.getElementById('center-controls');
+      const iconPlay = document.querySelector('.icon-play');
+      const iconPause = document.querySelector('.icon-pause');
+      const video = document.getElementById('video360');
+      const fsBtn = document.getElementById('fullscreen-btn');
       const scene = document.querySelector('a-scene');
-      const statusIndicator = document.querySelector('#status-indicator');
-      const fsBtn = document.querySelector('#fullscreen-btn');
 
-      let isPlaying = false;
+      let isControlsVisible = true;
 
-      // 1. IOS GYRO PERMISSIONS
+      // 1. ENABLE START BUTTON
+      video.addEventListener('canplay', () => {
+        startBtn.textContent = "START TOUR";
+        startBtn.disabled = false;
+      });
+
+      // 2. START EXPERIENCE
+      startBtn.addEventListener('click', () => {
+        startScreen.style.display = 'none';
+        video.play();
+        updatePlayState(true);
+        requestMotionPermission();
+        
+        // Hide controls after 2 seconds automatically for immersion
+        setTimeout(() => { toggleControls(false); }, 2000);
+      });
+
+      // 3. CENTER BUTTON CLICK (Play/Pause)
+      centerBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent drag interference
+        if (video.paused) {
+          video.play();
+          updatePlayState(true);
+          toggleControls(false); // Hide button when playing starts
+        } else {
+          video.pause();
+          updatePlayState(false);
+          // Keep button visible when paused
+        }
+      });
+
+      // 4. TAP ANYWHERE TO SHOW/HIDE CONTROLS
+      // We distinguish "Tap" vs "Drag"
+      let startX = 0, startY = 0;
+
+      scene.addEventListener('mousedown', (e) => { startX = e.screenX; startY = e.screenY; });
+      scene.addEventListener('touchstart', (e) => { startX = e.touches[0].screenX; startY = e.touches[0].screenY; });
+
+      const handleTap = (endX, endY) => {
+        const diffX = Math.abs(endX - startX);
+        const diffY = Math.abs(endY - startY);
+
+        // If moved less than 10px, it's a TAP.
+        if (diffX < 10 && diffY < 10) {
+          // If video is playing, toggle controls
+          if (!video.paused) {
+            toggleControls(!isControlsVisible);
+          }
+        }
+      };
+
+      scene.addEventListener('mouseup', (e) => handleTap(e.screenX, e.screenY));
+      scene.addEventListener('touchend', (e) => handleTap(e.changedTouches[0].screenX, e.changedTouches[0].screenY));
+
+
+      // --- HELPER FUNCTIONS ---
+
+      function updatePlayState(isPlaying) {
+        if (isPlaying) {
+          iconPlay.style.display = 'none';
+          iconPause.style.display = 'block';
+        } else {
+          iconPlay.style.display = 'block';
+          iconPause.style.display = 'none';
+        }
+      }
+
+      function toggleControls(show) {
+        isControlsVisible = show;
+        if (show) {
+          centerBtn.style.opacity = '1';
+          centerBtn.style.pointerEvents = 'auto';
+        } else {
+          centerBtn.style.opacity = '0';
+          centerBtn.style.pointerEvents = 'none'; // Unclickable when hidden
+        }
+      }
+
       function requestMotionPermission() {
         if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
           DeviceMotionEvent.requestPermission().catch(console.error);
         }
       }
 
-      // 2. START LOGIC
-      overlay.addEventListener('click', function () {
-        overlay.style.display = 'none';
-        video.play();
-        isPlaying = true;
-        requestMotionPermission();
-      });
-
-      // 3. PLAY/PAUSE LOGIC (With Drag Detection)
-      let mouseDownTime = 0;
-      scene.addEventListener('mousedown', () => { mouseDownTime = Date.now(); });
-      scene.addEventListener('touchstart', () => { mouseDownTime = Date.now(); });
-
-      const handleInteractionEnd = () => {
-        const timeDiff = Date.now() - mouseDownTime;
-        if (timeDiff < 500) { togglePlayPause(); }
-      };
-
-      scene.addEventListener('mouseup', handleInteractionEnd);
-      scene.addEventListener('touchend', handleInteractionEnd);
-
-      function togglePlayPause() {
-        if (video.paused) {
-          video.play();
-          statusIndicator.style.display = 'none';
-        } else {
-          video.pause();
-          statusIndicator.style.display = 'block';
-        }
-      }
-
-      // 4. FULLSCREEN LOGIC
-      fsBtn.addEventListener('click', function(e) {
-        e.stopPropagation(); // Prevent triggering play/pause underneath
-        
+      fsBtn.addEventListener('click', () => {
         if (!document.fullscreenElement) {
-          // Enter Fullscreen
-          if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen();
-          } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
-            document.documentElement.webkitRequestFullscreen();
-          } else if (document.documentElement.msRequestFullscreen) { /* IE11 */
-            document.documentElement.msRequestFullscreen();
-          }
+          if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+          else if (document.documentElement.webkitRequestFullscreen) document.documentElement.webkitRequestFullscreen();
         } else {
-          // Exit Fullscreen
-          if (document.exitFullscreen) {
-            document.exitFullscreen();
-          } else if (document.webkitExitFullscreen) { /* Safari */
-            document.webkitExitFullscreen();
-          } else if (document.msExitFullscreen) { /* IE11 */
-            document.msExitFullscreen();
-          }
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
         }
       });
     </script>
