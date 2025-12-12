@@ -2,21 +2,35 @@
 <html>
   <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>360 Player</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     
     <style>
-      /* --- UI STYLES --- */
-      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+      /* --- 1. GLOBAL RESET (Fixes White Gap & Blue Highlight) --- */
+      html, body {
+        width: 100%; height: 100%; /* Force full screen height */
+        margin: 0; padding: 0;     /* Remove default white margins */
+        overflow: hidden;          /* Prevent scrolling */
+        font-family: sans-serif;
+        background-color: black;   /* Failsafe background */
+      }
 
-      /* UI LAYER (Holds everything on top of video) */
+      /* Disable Blue Tap Highlight on everything */
+      * {
+        -webkit-tap-highlight-color: transparent;
+        user-select: none; /* Prevent text selection */
+        -webkit-user-select: none;
+      }
+
+      /* --- UI LAYER --- */
       #ui-layer {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        pointer-events: none; /* Default: Let clicks pass through to drag video */
+        pointer-events: none; 
         z-index: 100;
       }
 
-      /* START SCREEN (Black overlay) */
+      /* --- START SCREEN --- */
       #start-screen {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.9); z-index: 200;
@@ -26,24 +40,25 @@
       #start-btn {
         padding: 15px 40px; font-size: 18px; background: white;
         border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+        /* Ensure no blue highlight on button press */
+        outline: none; 
       }
       #start-btn:disabled { opacity: 0.5; cursor: wait; }
 
-      /* CENTER PLAY/PAUSE BUTTON */
+      /* --- CENTER BUTTON --- */
       #center-controls {
         position: absolute; top: 50%; left: 50%; 
         transform: translate(-50%, -50%);
         width: 80px; height: 80px;
-        pointer-events: auto; /* Clickable */
+        pointer-events: auto; 
         cursor: pointer;
-        opacity: 1; /* Visible by default */
+        opacity: 1; 
         transition: opacity 0.3s;
         display: flex; justify-content: center; align-items: center;
         background: rgba(0, 0, 0, 0.6);
         border: 3px solid white; border-radius: 50%;
       }
 
-      /* ICONS */
       .icon-play {
         width: 0; height: 0;
         border-top: 15px solid transparent;
@@ -58,7 +73,7 @@
         display: none;
       }
 
-      /* HEADER & FULLSCREEN */
+      /* --- HEADER & FULLSCREEN --- */
       #ui-header {
         position: absolute; top: 20px; left: 20px; color: white;
         text-shadow: 1px 1px 4px black;
@@ -114,62 +129,45 @@
 
       let isControlsVisible = true;
 
-      // 1. ENABLE START BUTTON
       video.addEventListener('canplay', () => {
         startBtn.textContent = "START TOUR";
         startBtn.disabled = false;
       });
 
-      // 2. START EXPERIENCE
       startBtn.addEventListener('click', () => {
         startScreen.style.display = 'none';
         video.play();
         updatePlayState(true);
         requestMotionPermission();
-        
-        // Hide controls after 2 seconds automatically for immersion
         setTimeout(() => { toggleControls(false); }, 2000);
       });
 
-      // 3. CENTER BUTTON CLICK (Play/Pause)
       centerBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent drag interference
+        e.stopPropagation();
         if (video.paused) {
           video.play();
           updatePlayState(true);
-          toggleControls(false); // Hide button when playing starts
+          toggleControls(false);
         } else {
           video.pause();
           updatePlayState(false);
-          // Keep button visible when paused
         }
       });
 
-      // 4. TAP ANYWHERE TO SHOW/HIDE CONTROLS
-      // We distinguish "Tap" vs "Drag"
       let startX = 0, startY = 0;
-
       scene.addEventListener('mousedown', (e) => { startX = e.screenX; startY = e.screenY; });
       scene.addEventListener('touchstart', (e) => { startX = e.touches[0].screenX; startY = e.touches[0].screenY; });
 
       const handleTap = (endX, endY) => {
         const diffX = Math.abs(endX - startX);
         const diffY = Math.abs(endY - startY);
-
-        // If moved less than 10px, it's a TAP.
         if (diffX < 10 && diffY < 10) {
-          // If video is playing, toggle controls
-          if (!video.paused) {
-            toggleControls(!isControlsVisible);
-          }
+          if (!video.paused) toggleControls(!isControlsVisible);
         }
       };
 
       scene.addEventListener('mouseup', (e) => handleTap(e.screenX, e.screenY));
       scene.addEventListener('touchend', (e) => handleTap(e.changedTouches[0].screenX, e.changedTouches[0].screenY));
-
-
-      // --- HELPER FUNCTIONS ---
 
       function updatePlayState(isPlaying) {
         if (isPlaying) {
@@ -188,7 +186,7 @@
           centerBtn.style.pointerEvents = 'auto';
         } else {
           centerBtn.style.opacity = '0';
-          centerBtn.style.pointerEvents = 'none'; // Unclickable when hidden
+          centerBtn.style.pointerEvents = 'none';
         }
       }
 
