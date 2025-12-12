@@ -7,27 +7,20 @@
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     
     <style>
-      /* --- 1. GLOBAL RESET (Fixes White Gap & Blue Highlight) --- */
+      /* --- GLOBAL RESET --- */
       html, body {
-        width: 100%; height: 100%; /* Force full screen height */
-        margin: 0; padding: 0;     /* Remove default white margins */
-        overflow: hidden;          /* Prevent scrolling */
-        font-family: sans-serif;
-        background-color: black;   /* Failsafe background */
+        width: 100%; height: 100%; margin: 0; padding: 0;
+        overflow: hidden; font-family: sans-serif; background-color: black;
       }
-
-      /* Disable Blue Tap Highlight on everything */
       * {
         -webkit-tap-highlight-color: transparent;
-        user-select: none; /* Prevent text selection */
-        -webkit-user-select: none;
+        user-select: none; -webkit-user-select: none;
       }
 
       /* --- UI LAYER --- */
       #ui-layer {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        pointer-events: none; 
-        z-index: 100;
+        pointer-events: none; z-index: 100;
       }
 
       /* --- START SCREEN --- */
@@ -40,36 +33,31 @@
       #start-btn {
         padding: 15px 40px; font-size: 18px; background: white;
         border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
-        /* Ensure no blue highlight on button press */
-        outline: none; 
+        outline: none; transition: background 0.3s;
       }
-      #start-btn:disabled { opacity: 0.5; cursor: wait; }
+      #start-btn:disabled { opacity: 0.5; cursor: wait; background: #999; }
 
       /* --- CENTER BUTTON --- */
       #center-controls {
         position: absolute; top: 50%; left: 50%; 
         transform: translate(-50%, -50%);
         width: 80px; height: 80px;
-        pointer-events: auto; 
-        cursor: pointer;
-        opacity: 1; 
-        transition: opacity 0.3s;
+        pointer-events: auto; cursor: pointer;
         display: flex; justify-content: center; align-items: center;
         background: rgba(0, 0, 0, 0.6);
         border: 3px solid white; border-radius: 50%;
+        transition: opacity 0.3s;
       }
 
       .icon-play {
         width: 0; height: 0;
         border-top: 15px solid transparent;
         border-bottom: 15px solid transparent;
-        border-left: 25px solid white;
-        margin-left: 5px;
+        border-left: 25px solid white; margin-left: 5px;
       }
       .icon-pause {
         width: 25px; height: 30px;
-        border-left: 8px solid white;
-        border-right: 8px solid white;
+        border-left: 8px solid white; border-right: 8px solid white;
         display: none;
       }
 
@@ -84,7 +72,6 @@
         background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;
       }
       #fullscreen-btn svg { width: 24px; height: 24px; fill: white; display: block; }
-
     </style>
   </head>
   <body>
@@ -111,7 +98,7 @@
 
     <a-scene loading-screen="dotsColor: white; backgroundColor: black" vr-mode-ui="enabled: false">
       <a-assets>
-        <video id="video360" src="video.mp4" loop crossorigin="anonymous" playsinline webkit-playsinline></video>
+        <video id="video360" src="video.mp4" loop crossorigin="anonymous" playsinline webkit-playsinline preload="auto"></video>
       </a-assets>
       <a-videosphere src="#video360" rotation="0 -90 0"></a-videosphere>
       <a-entity camera look-controls="reverseMouseDrag: true"></a-entity>
@@ -129,15 +116,46 @@
 
       let isControlsVisible = true;
 
-      video.addEventListener('canplay', () => {
+      // --- THE IOS FIX: Force the button to enable ---
+      
+      // 1. Try to load normally
+      video.load();
+
+      // 2. Define the enable function
+      function enableButton() {
+        if (!startBtn.disabled) return;
         startBtn.textContent = "START TOUR";
         startBtn.disabled = false;
-      });
+        startBtn.style.cursor = "pointer";
+      }
+
+      // 3. Listen for standard events
+      video.addEventListener('canplay', enableButton);
+      video.addEventListener('loadedmetadata', enableButton);
+
+      // 4. FALLBACK TIMER (The "Safety Net")
+      // If iOS blocks the load, this forces the button to appear after 3 seconds anyway.
+      setTimeout(() => {
+        if (startBtn.disabled) {
+          console.log("iOS Fallback Triggered");
+          enableButton();
+        }
+      }, 3000);
+
+
+      // --- EVENT LISTENERS ---
 
       startBtn.addEventListener('click', () => {
         startScreen.style.display = 'none';
-        video.play();
-        updatePlayState(true);
+        
+        // This .play() inside a click event unlocks the video on iOS
+        video.play().then(() => {
+          updatePlayState(true);
+        }).catch(err => {
+          console.error("Play failed:", err);
+          updatePlayState(false);
+        });
+
         requestMotionPermission();
         setTimeout(() => { toggleControls(false); }, 2000);
       });
@@ -154,6 +172,7 @@
         }
       });
 
+      // --- TAP DETECTION (For showing controls) ---
       let startX = 0, startY = 0;
       scene.addEventListener('mousedown', (e) => { startX = e.screenX; startY = e.screenY; });
       scene.addEventListener('touchstart', (e) => { startX = e.touches[0].screenX; startY = e.touches[0].screenY; });
@@ -169,6 +188,7 @@
       scene.addEventListener('mouseup', (e) => handleTap(e.screenX, e.screenY));
       scene.addEventListener('touchend', (e) => handleTap(e.changedTouches[0].screenX, e.changedTouches[0].screenY));
 
+      // --- HELPERS ---
       function updatePlayState(isPlaying) {
         if (isPlaying) {
           iconPlay.style.display = 'none';
